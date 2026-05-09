@@ -1,0 +1,261 @@
+:root {
+  --background: #ffffff;
+  --foreground: #333333;
+  --header-bg: #064410;
+  --header-border: #0f631d;
+  --footer-bg: #222222;
+  
+  /* Theme Colors */
+  --kusano-theme: #064410;
+  --kusano-theme-hover: #0b5e1a;
+  --kusano-accent-green: #28a745;
+  --kusano-accent-enji: #800000;
+  --kusano-accent-navy: #142d4c;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--foreground);
+  background: var(--background);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+}
+
+main {
+  flex-grow: 1;
+}
+
+.main-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  width: 100%;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: #222;
+  line-height: 1.4;
+  margin-top: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+/* Header Styles */
+.site-header {
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  padding: 0.75rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.site-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.site-title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.site-title a {
+  color: white;
+}
+
+.site-title a:hover {
+  color: #e0e0e0;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+}
+
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+  z-index: 100;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  transition: all 0.3s ease-in-out;
+}
+
+.nav-links a {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: bold;
+}
+
+.nav-links a:hover {
+  color: white;
+  text-decoration: underline;
+}
+
+/* モバイル対応 (768px以下) */
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: block; /* ハンバーガーボタンを表示 */
+  }
+
+  .nav-links {
+    position: fixed;
+    top: 72px; /* ヘッダーの高さ分下げる */
+    left: 0;
+    width: 100%;
+    height: 0; /* 最初は高さを0にする */
+    background-color: var(--header-bg);
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 0;
+    overflow: hidden;
+    gap: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+
+  .nav-links.open {
+    height: calc(100vh - 72px); /* 画面いっぱいまで広げる */
+    padding-top: 2rem;
+    gap: 2rem;
+  }
+
+  .nav-links li {
+    font-size: 1.25rem;
+  }
+}
+
+/* Footer Styles */
+.site-footer {
+  background-color: var(--footer-bg);
+  color: white;
+  text-align: center;
+  padding: 1.5rem;
+  margin-top: auto;
+}
+
+.site-footer p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--kusano-theme);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--kusano-theme-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(6, 68, 16, 0.2);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* --- Form Improvements (1.5x size) --- */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+select,
+textarea {
+  font-size: 1rem; /* 16px (モバイルの自動ズーム防止) */
+  padding: 0.8rem 1rem; /* 前後の余白を広げて1.5倍程度のサイズ感に */
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  width: 100%;
+  color: #334155;
+  background-color: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none; /* ブラウザ独自のスタイルをリセット */
+}
+
+/* セレクトボックスの矢印アイコン復活 (appearance: none 後) */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+}
+
+textarea {
+  min-height: 100px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--kusano-theme);
+  box-shadow: 0 0 0 3px rgba(6, 68, 16, 0.1);
+}
+
+/* チェックボックス・ラジオボタンのサイズ調整 */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: var(--kusano-theme);
+}
+
+/* ラベルのスタイル調整 */
+label {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  color: #1e293b;
+}
+
+/* 全システム共通: 数値入力の上下矢印（スピナー）を非表示にする */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
