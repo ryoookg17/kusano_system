@@ -28,6 +28,9 @@ function TextbookAdminContent() {
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [filterSchool, setFilterSchool] = useState("");
+  const currentYear = new Date().getFullYear();
+  const [filterYear, setFilterYear] = useState<string>(currentYear.toString());
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -118,7 +121,23 @@ function TextbookAdminContent() {
   };
 
   const filteredItems = items.filter(item => {
+    // 学校名フィルタ
     if (filterSchool && !item.order?.school_name?.includes(filterSchool)) return false;
+    
+    // 年度フィルタ (注文日時から年を抽出)
+    if (filterYear) {
+      const itemDate = item.order?.created_at || item.created_at;
+      if (itemDate) {
+        const itemYear = new Date(itemDate).getFullYear().toString();
+        if (itemYear !== filterYear) return false;
+      }
+    }
+
+    // ステータスフィルタ
+    if (filterStatus !== "all") {
+      if (item.status !== filterStatus) return false;
+    }
+
     return true;
   });
 
@@ -152,7 +171,28 @@ function TextbookAdminContent() {
       </div>
 
       {/* フィルタエリア */}
-      <div style={{ marginBottom: "15px" }}>
+      <div style={{ marginBottom: "15px", display: "flex", gap: "15px", flexWrap: "wrap" }}>
+        <select
+          value={filterYear}
+          onChange={(e) => setFilterYear(e.target.value)}
+          style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", backgroundColor: "white", color: "#000" }}
+        >
+          <option value="">すべての年度</option>
+          {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(year => (
+            <option key={year} value={year.toString()}>{year}年度</option>
+          ))}
+        </select>
+
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", backgroundColor: "white", color: "#000" }}
+        >
+          <option value="all">すべてのステータス</option>
+          <option value="未対応">未対応</option>
+          <option value="完了">完了</option>
+        </select>
+
         <input
           type="text"
           placeholder="学校名で絞り込み..."
