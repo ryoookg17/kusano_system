@@ -286,7 +286,7 @@ function TextbookAdminContent() {
                             : "-") : ""}
                       </td>
                       <td style={{ padding: "10px 15px", fontSize: "0.85rem", color: "#000" }}>
-                        {item.billing_target || "-"}
+                        {item.accounting_vendor || "-"}
                       </td>
                       <td style={{ padding: "10px 15px" }}>
                         <div 
@@ -409,6 +409,7 @@ export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: 
     requested_date: initialItem.requested_date || "",
     remarks: initialItem.remarks || "",
     unit_price: String(initialItem.unit_price || ""),
+    accounting_vendor: initialItem.accounting_vendor || "",
   }] : [
     {
       textbook_name: "",
@@ -427,6 +428,7 @@ export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: 
       requested_date: "",
       remarks: "",
       unit_price: "",
+      accounting_vendor: "",
     },
   ]);
 
@@ -469,7 +471,8 @@ export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: 
             billing_target: updatedItem.delivery_method === "納品" ? updatedItem.billing_target : null,
             requested_date: updatedItem.delivery_method === "販売" && updatedItem.requested_date ? updatedItem.requested_date : null,
             remarks: updatedItem.remarks,
-            unit_price: updatedItem.unit_price ? parseInt(updatedItem.unit_price, 10) : null
+            unit_price: updatedItem.unit_price ? parseInt(updatedItem.unit_price, 10) : null,
+            accounting_vendor: updatedItem.accounting_vendor
           })
           .eq('id', initialItem.id);
         
@@ -509,7 +512,8 @@ export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: 
           billing_target: item.delivery_method === "納品" ? item.billing_target : null,
           requested_date: item.delivery_method === "販売" && item.requested_date ? item.requested_date : null,
           remarks: item.remarks,
-          unit_price: item.unit_price ? parseInt(item.unit_price, 10) : null
+          unit_price: item.unit_price ? parseInt(item.unit_price, 10) : null,
+          accounting_vendor: item.accounting_vendor
         }));
 
         const { error: itemsError } = await supabase.from('textbook_order_items').insert(itemsToSave);
@@ -604,6 +608,14 @@ export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: 
                     next[idx].subject = e.target.value;
                     setOrderItems(next);
                   }} placeholder="例: 数学" style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>帳合</label>
+                  <input type="text" value={item.accounting_vendor} onChange={(e) => {
+                    const next = [...orderItems];
+                    next[idx].accounting_vendor = e.target.value;
+                    setOrderItems(next);
+                  }} placeholder="例: くさの書店" style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>本体価格</label>
