@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { allSchoolData as schoolList, schoolTypeLabels, areaLabels } from "@shared/schools";
-
-
+import * as XLSX from "xlsx";
 
 export default function SchoolBookOrderPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [inputMode, setInputMode] = useState<"fast" | "standard">("fast");
   const [bulkIsbnText, setBulkIsbnText] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -20,7 +20,6 @@ export default function SchoolBookOrderPage() {
     school_area: "",
     school_name: "",
     teacher_name: "",
-    email: "",
     school_phone: "",
     personal_phone: "",
     remarks: "",
@@ -86,27 +85,71 @@ export default function SchoolBookOrderPage() {
     
     try {
       const isISBN = /^\d+$/.test(query.replace(/-/g, ""));
+      const isbnNum = query.replace(/-/g, "");
+
+      // 1. 楽天ブックスAPI (国内の本に最強)
+      const rakutenAppId = process.env.NEXT_PUBLIC_RAKUTEN_APP_ID;
+      if (isISBN && rakutenAppId) {
+        try {
+          const rRes = await fetch(`https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?applicationId=${rakutenAppId}&isbn=${isbnNum}`);
+          const rData = await rRes.json();
+          if (rData.Items && rData.Items.length > 0) {
+            const item = rData.Items[0].Item;
+            return {
+              book_title: item.title || "",
+              author: item.author || "",
+              publisher: item.publisherName || "",
+              isbn: item.isbn || isbnNum,
+              price_excluding_tax: Math.ceil(item.itemPrice / 1.1).toString(),
+              price_including_tax: item.itemPrice.toString()
+            };
+          }
+        } catch (re) {
+          console.error("Rakuten API Error:", re);
+        }
+      }
+
+      // 2. OpenBD (既存のロジック: 楽天にない場合のバックアップ)
       if (isISBN) {
-        const isbnNum = query.replace(/-/g, "");
         const res = await fetch(`https://api.openbd.jp/v1/get?isbn=${isbnNum}`);
         const data = await res.json();
         if (data && data[0]) {
           const summary = data[0].summary;
+          const onix = data[0]?.onix;
           let priceExcl = "";
           let priceIncl = "";
-          const supply = data[0]?.onix?.ProductSupply?.SupplyDetail;
-          if (supply?.Price) {
-            const pObj = supply.Price.find((p: any) => p.PriceAmount);
-            if (pObj) {
-              const p = Number(pObj.PriceAmount);
-              priceExcl = p.toString();
-              priceIncl = Math.floor(p * 1.1).toString();
+          let publisher = summary.publisher || "";
+
+          if (onix) {
+            if (!publisher) {
+              publisher = onix.PublishingDetail?.Publisher?.PublisherName || "";
+            }
+            const supplyDetails = onix.ProductSupply?.SupplyDetail;
+            const extractPrice = (priceList: any[]) => {
+              const pObj = priceList.find((p: any) => p.PriceAmount);
+              if (pObj) {
+                const p = Number(pObj.PriceAmount);
+                priceExcl = p.toString();
+                priceIncl = Math.floor(p * 1.1).toString();
+                return true;
+              }
+              return false;
+            };
+
+            if (Array.isArray(supplyDetails)) {
+              for (const detail of supplyDetails) {
+                if (Array.isArray(detail.Price) && extractPrice(detail.Price)) break;
+              }
+            } else if (supplyDetails?.Price) {
+              const prices = Array.isArray(supplyDetails.Price) ? supplyDetails.Price : [supplyDetails.Price];
+              extractPrice(prices);
             }
           }
+
           return {
             book_title: summary.title || "",
             author: summary.author || "",
-            publisher: summary.publisher || "",
+            publisher: publisher,
             isbn: summary.isbn || isbnNum,
             price_excluding_tax: priceExcl,
             price_including_tax: priceIncl
@@ -114,19 +157,20 @@ export default function SchoolBookOrderPage() {
         }
       }
 
-      // OpenBDで見つからないかISBNでない場合はGoogle Books
-      const gbRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
+      // 3. Google Books (最終手段)
+      const gbRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1&country=JP`);
       const gbData = await gbRes.json();
       if (gbData.items && gbData.items.length > 0) {
         const info = gbData.items[0].volumeInfo;
         const sale = gbData.items[0].saleInfo;
         let pIncl = "";
         let pExcl = "";
-        if (sale?.listPrice?.amount) {
-          const a = sale.listPrice.amount;
-          pIncl = Math.floor(a).toString();
-          pExcl = Math.ceil(a / 1.1).toString();
+        const priceAmount = sale?.listPrice?.amount || sale?.retailPrice?.amount;
+        if (priceAmount) {
+          pIncl = Math.floor(priceAmount).toString();
+          pExcl = Math.ceil(priceAmount / 1.1).toString();
         }
+
         return {
           book_title: info.title || "",
           author: info.authors ? info.authors.join(", ") : "",
@@ -224,8 +268,31 @@ export default function SchoolBookOrderPage() {
     setItems(newItems.map((item, i) => ({ ...item, serial_number: i + 1 })));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const downloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const sheetData = items.map((item, index) => ({
+      "No.": index + 1,
+      "書名": item.book_title,
+      "著者": item.author,
+      "出版社": item.publisher,
+      "ISBN": item.isbn,
+      "本体価格": item.price_excluding_tax,
+      "税込価格": item.price_including_tax,
+      "冊数": item.quantity,
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    XLSX.utils.book_append_sheet(wb, ws, "ご注文内容");
+    XLSX.writeFile(wb, `図書ご注文控え_${commonInfo.school_name}_${new Date().toLocaleDateString('ja-JP').replace(/\//g, '')}.xlsx`);
+  };
+
+  const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsConfirming(true);
+    window.scrollTo(0, 0);
+  };
+
+  const handleFinalSubmit = async () => {
     setIsSubmitting(true);
     
     try {
@@ -235,11 +302,11 @@ export default function SchoolBookOrderPage() {
         .from('schoolbook_orders')
         .insert([{
           id: orderId,
+          created_at: new Date().toLocaleDateString("sv-SE"), // YYYY-MM-DD 形式
           school_type: commonInfo.school_type,
           school_area: commonInfo.school_area || null,
           school_name: commonInfo.school_name,
           teacher_name: commonInfo.teacher_name,
-          email: commonInfo.email,
           school_phone: commonInfo.school_phone,
           personal_phone: commonInfo.personal_phone || null,
           remarks: commonInfo.remarks || null
@@ -265,6 +332,7 @@ export default function SchoolBookOrderPage() {
 
       if (itemsError) throw itemsError;
 
+      /* 
       // 注文確認メールの送信
       try {
         const booksListHtml = items.map((item, idx) => `
@@ -310,6 +378,7 @@ export default function SchoolBookOrderPage() {
       } catch (mailErr) {
         console.error("Failed to send confirmation email:", mailErr);
       }
+      */
 
       alert("図書の注文が完了しました！");
       router.push("/");
@@ -321,13 +390,76 @@ export default function SchoolBookOrderPage() {
     }
   };
 
+  if (isConfirming) {
+    return (
+      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        <h1 className="section-heading" style={{ borderBottom: "2px solid var(--kusano-accent-enji)", color: "var(--kusano-accent-enji)", width: "100%", paddingBottom: "10px", marginBottom: "30px" }}>
+          ご注文内容の確認
+        </h1>
+        
+        <div style={{ backgroundColor: "var(--surface-light)", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "30px" }}>
+          <h2 style={{ fontSize: "1.2rem", marginBottom: "15px", color: "var(--kusano-accent-enji)" }}>【1】ご発注者様の情報</h2>
+          <p style={{ marginBottom: "8px" }}><strong>学校名：</strong> {commonInfo.school_name}</p>
+          <p style={{ marginBottom: "8px" }}><strong>ご担当者名：</strong> {commonInfo.teacher_name}</p>
+          <p style={{ marginBottom: "8px" }}><strong>学校電話番号：</strong> {commonInfo.school_phone}</p>
+          <p style={{ marginBottom: "8px" }}><strong>携帯電話番号：</strong> {commonInfo.personal_phone || "-"}</p>
+          <p style={{ marginBottom: "0" }}><strong>備考：</strong> {commonInfo.remarks || "-"}</p>
+        </div>
+
+        <div style={{ backgroundColor: "var(--surface-light)", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "30px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px", flexWrap: "wrap", gap: "10px" }}>
+            <h2 style={{ fontSize: "1.2rem", margin: 0, color: "var(--kusano-accent-enji)" }}>【2】ご注文の図書一覧</h2>
+            <button type="button" onClick={downloadExcel} style={{ padding: "8px 15px", backgroundColor: "#10b981", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>
+              Excelで控えをダウンロード
+            </button>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px", backgroundColor: "white" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "2px solid #cbd5e1" }}>
+                  <th style={{ padding: "10px", textAlign: "left", whiteSpace: "nowrap" }}>ISBN</th>
+                  <th style={{ padding: "10px", textAlign: "left" }}>書名</th>
+                  <th style={{ padding: "10px", textAlign: "left", whiteSpace: "nowrap" }}>出版社</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>本体価格</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>税込価格</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>冊数</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ padding: "10px", whiteSpace: "nowrap" }}>{item.isbn || "-"}</td>
+                    <td style={{ padding: "10px" }}>{item.book_title}</td>
+                    <td style={{ padding: "10px", whiteSpace: "nowrap" }}>{item.publisher || "-"}</td>
+                    <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{item.price_excluding_tax ? `¥${item.price_excluding_tax}` : "-"}</td>
+                    <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{item.price_including_tax ? `¥${item.price_including_tax}` : "-"}</td>
+                    <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{item.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "20px", justifyContent: "center", marginTop: "40px", flexWrap: "wrap" }}>
+          <button onClick={() => setIsConfirming(false)} style={{ padding: "15px 30px", backgroundColor: "#64748b", color: "white", border: "none", borderRadius: "5px", fontSize: "1.1rem", cursor: "pointer" }}>
+            戻って修正する
+          </button>
+          <button onClick={handleFinalSubmit} disabled={isSubmitting} style={{ padding: "15px 40px", backgroundColor: isSubmitting ? "#ccc" : "#dc3545", color: "white", border: "none", borderRadius: "5px", fontSize: "1.1rem", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 10px rgba(220,53,69,0.3)" }}>
+            {isSubmitting ? "送信中..." : "この内容で注文を確定する"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto" }}>
       <h1 className="section-heading" style={{ borderBottom: "2px solid var(--kusano-accent-enji)", color: "var(--kusano-accent-enji)", width: "100%", paddingBottom: "10px", marginBottom: "30px" }}>
         学校図書 ご注文フォーム
       </h1>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+      <form onSubmit={handleConfirm} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
         
         {/* --- 共通情報セクション --- */}
         <section style={{ backgroundColor: "var(--surface-light)", padding: "20px", borderRadius: "8px", border: "1px solid #ddd" }}>
@@ -373,10 +505,6 @@ export default function SchoolBookOrderPage() {
               <input required name="teacher_name" value={commonInfo.teacher_name} onChange={handleCommonChange} placeholder="" />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-              <label style={{ fontWeight: "bold" }}>メールアドレス <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
-              <input required type="email" name="email" value={commonInfo.email} onChange={handleCommonChange} />
-            </div>
 
             <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 200px" }}>
@@ -637,11 +765,8 @@ export default function SchoolBookOrderPage() {
             className="btn-primary" 
             style={{ fontSize: "1.2rem", padding: "15px 40px", backgroundColor: isSubmitting ? "#ccc" : "#dc3545", boxShadow: "0 4px 10px rgba(220,53,69,0.3)" }}
           >
-            {isSubmitting ? "送信中..." : "注文を確定する"}
+            {isSubmitting ? "処理中..." : "注文を確認する"}
           </button>
-          <p style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}>
-            ※注文内容を確認の上、確定ボタンを押してください。
-          </p>
         </section>
 
       </form>

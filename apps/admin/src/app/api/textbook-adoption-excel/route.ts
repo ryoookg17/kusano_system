@@ -102,28 +102,49 @@ export async function GET(request: Request) {
 
       chunk.forEach((data, index) => {
         const { item, order } = data;
-        const offset = index * 21;
+        const offset = index * 20; // 2件目は20行下
         const orderDate = formatDate(order.created_at);
         
-        currentSheet.getCell(3 + offset, 6).value = orderDate;
-        currentSheet.getCell(7 + offset, 3).value = item.publisher || "";
-        currentSheet.getCell(8 + offset, 3).value = item.textbook_name || "";
-        currentSheet.getCell(10 + offset, 6).value = item.main_item_type || "";
-        currentSheet.getCell(11 + offset, 3).value = item.unit_price || "";
-        currentSheet.getCell(12 + offset, 3).value = order.school_name || "";
-        currentSheet.getCell(8 + offset, 10).value = (item.student_quantity || 0) + "冊";
-        currentSheet.getCell(9 + offset, 10).value = (item.teacher_quantity || 0) + "冊";
-        currentSheet.getCell(11 + offset, 10).value = item.target_grade || "";
-        
-        currentSheet.getCell(12 + offset, 10).value = item.answer_attached || "";
-        currentSheet.getCell(13 + offset, 10).value = item.answer_type || "";
+        // 帳合 (B2, J6) ※これは変更しない
+        currentSheet.getCell(2 + offset, 2).value = item.accounting_vendor || "";
+        currentSheet.getCell(6 + offset, 10).value = item.accounting_vendor || "";
 
-        // J14 / J35 (形態) と J15 / J36 (請求先) を最後に書き込んで上書きを防止
-        currentSheet.getCell(14 + offset, 10).value = item.delivery_method || "";
-        if (item.delivery_method === "納品") {
-          currentSheet.getCell(15 + offset, 10).value = item.billing_target || "";
+        // 注文日 (F3 -> F2)
+        currentSheet.getCell(2 + offset, 6).value = orderDate;
+        
+        // 基本情報
+        currentSheet.getCell(6 + offset, 3).value = item.publisher || ""; // 7 -> 6
+        currentSheet.getCell(7 + offset, 3).value = item.textbook_name || ""; // 8 -> 7
+        currentSheet.getCell(10 + offset, 3).value = item.unit_price || ""; // 11 -> 10
+        currentSheet.getCell(11 + offset, 3).value = order.school_name || ""; // 12 -> 11
+        
+        // 冊数・学年
+        currentSheet.getCell(7 + offset, 10).value = (item.student_quantity || 0) + "冊"; // 8 -> 7
+        currentSheet.getCell(8 + offset, 10).value = (item.teacher_quantity || 0) + "冊"; // 9 -> 8
+        currentSheet.getCell(10 + offset, 10).value = item.target_grade || ""; // 11 -> 10
+        
+        // 本体・解答・形態
+        // F10 -> F9: 本体がバラか冊子か
+        currentSheet.getCell(9 + offset, 6).value = item.main_item_type || ""; 
+        
+        // J13 -> J12: 解答がなしか冊子かバラか
+        currentSheet.getCell(12 + offset, 10).value = item.answer_type || "";
+        
+        // J12 -> J11: 解答をつけるかはずすか (J12が「なし」の場合は空欄)
+        if (item.answer_type === "なし") {
+          currentSheet.getCell(11 + offset, 10).value = "";
         } else {
-          currentSheet.getCell(15 + offset, 10).value = "";
+          currentSheet.getCell(11 + offset, 10).value = item.answer_attached || "";
+        }
+
+        // J14 -> J13: 納品か販売か
+        currentSheet.getCell(13 + offset, 10).value = item.delivery_method || "";
+
+        // 請求先 (納品の場合のみ J15 -> J14 へ書き込み)
+        if (item.delivery_method === "納品") {
+          currentSheet.getCell(14 + offset, 10).value = item.billing_target || "";
+        } else {
+          currentSheet.getCell(14 + offset, 10).value = "";
         }
       });
     }

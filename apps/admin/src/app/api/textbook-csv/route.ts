@@ -20,7 +20,7 @@ export async function GET() {
     if (!data) return NextResponse.json({ error: "No data" }, { status: 404 });
 
     const headers = [
-      "注文日時", "状態", "高校名", "ご担当者名", "メールアドレス", "学校TEL", "個人TEL",
+      "注文日時", "状態", "高校名", "ご担当者名", "学校TEL", "個人TEL",
       "教材名", "出版社", "本体価格", "対象学年", "生徒用数", "教員用数",
       "本体", "解答", "解答添付", "付属品", "付属品添付", "納品形態", "請求先", "希望日", "備考"
     ];
@@ -41,7 +41,6 @@ export async function GET() {
         escapeCSV(order.status),
         escapeCSV(order.school_name),
         escapeCSV(order.teacher_name),
-        escapeCSV(order.email),
         escapeCSV(order.school_phone),
         escapeCSV(order.personal_phone),
       ];

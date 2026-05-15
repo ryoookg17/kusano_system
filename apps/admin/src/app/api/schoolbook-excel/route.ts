@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
     // ヘッダー行
     const headers = [
-      "注文日時", "状態", "学校種別", "地区", "学校名", "ご担当者名", "メールアドレス", "学校TEL", "個人TEL", "備考",
+      "注文日時", "状態", "学校種別", "地区", "学校名", "ご担当者名", "学校TEL", "個人TEL", "備考",
       "通し番号", "書名", "著者名", "出版社", "ISBN", "本体価格", "税込価格", "冊数"
     ];
 
@@ -63,7 +63,6 @@ export async function GET(request: Request) {
         order.school_area,
         order.school_name,
         order.teacher_name,
-        order.email,
         order.school_phone,
         order.personal_phone,
         order.remarks,
@@ -103,7 +102,7 @@ export async function GET(request: Request) {
     });
 
     // 列幅の自動調整
-    const colWidths = [20, 8, 10, 10, 20, 14, 25, 14, 14, 25, 8, 30, 16, 16, 16, 10, 10, 8];
+    const colWidths = [20, 8, 10, 10, 20, 14, 14, 14, 25, 8, 30, 16, 16, 16, 10, 10, 8];
     colWidths.forEach((width, i) => {
       sheet.getColumn(i + 1).width = width;
     });

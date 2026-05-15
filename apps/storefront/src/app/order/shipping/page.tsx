@@ -193,12 +193,6 @@ export default function ShippingRequestPage() {
         <h1 className="section-heading" style={{ color: "var(--kusano-accent-navy)", margin: 0, padding: 0, border: "none" }}>
           {selectedSchool} 郵送依頼フォーム
         </h1>
-        <button 
-          onClick={() => setSelectedSchool("")}
-          style={{ padding: "6px 12px", fontSize: "14px", border: "1px solid #ccc", background: "#f9f9f9", borderRadius: "4px", cursor: "pointer" }}
-        >
-          ← 学校を選び直す
-        </button>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "25px", backgroundColor: "#fff", padding: "30px", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
@@ -223,6 +217,7 @@ export default function ShippingRequestPage() {
           <label style={{ fontWeight: "bold" }}>メールアドレス <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
           <input required type="email" name="email" value={formData.email} onChange={handleChange} placeholder="例: student@example.com" />
         </div>
+
 
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
           <label style={{ fontWeight: "bold" }}>電話番号 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>

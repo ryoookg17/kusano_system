@@ -105,6 +105,7 @@ export default function SettingsPage() {
               <div style={{ textAlign: "center" }}>最終更新</div>
             </div>
 
+            {keys.map((k) => (
               <div key={k.id} style={{ 
                 display: "grid", 
                 gridTemplateColumns: "1fr 280px 150px", 
@@ -145,6 +146,8 @@ export default function SettingsPage() {
                 <div style={{ color: "#64748b", fontSize: "0.85rem", textAlign: "center" }}>
                   {new Date(k.updated_at).toLocaleDateString('ja-JP')}<br />
                   {new Date(k.updated_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
             ))}
 
             <div style={{ marginTop: "30px", textAlign: "right" }}>

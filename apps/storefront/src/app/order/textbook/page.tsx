@@ -3,22 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { schoolData, areaLabels } from "@shared/schools";
-
-
+import { allSchoolData as schoolList, schoolTypeLabels, areaLabels } from "@shared/schools";
+import * as XLSX from "xlsx";
 
 export default function TextbookOrderPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 選択された地区
-  const [selectedArea, setSelectedArea] = useState("");
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // 注文の共通情報
   const [commonInfo, setCommonInfo] = useState({
+    school_type: "",
+    school_area: "",
     school_name: "",
     teacher_name: "",
-    email: "",
     school_phone: "",
     personal_phone: "", // 任意
   });
@@ -49,12 +47,30 @@ export default function TextbookOrderPage() {
     setCommonInfo({ ...commonInfo, [e.target.name]: e.target.value });
   };
 
-  const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const area = e.target.value;
-    setSelectedArea(area);
-    // 地区が変わったら学校名はいったんリセット
-    setCommonInfo({ ...commonInfo, school_name: "" });
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCommonInfo({
+      ...commonInfo,
+      school_type: e.target.value,
+      school_area: "",
+      school_name: "",
+    });
   };
+
+  const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCommonInfo({
+      ...commonInfo,
+      school_area: e.target.value,
+      school_name: "",
+    });
+  };
+
+  // 紐づく学校のリストを取得
+  let availableSchools: string[] = [];
+  if (commonInfo.school_type === "special") {
+    availableSchools = schoolList["special"];
+  } else if (commonInfo.school_type && commonInfo.school_area) {
+    availableSchools = schoolList[commonInfo.school_type]?.[commonInfo.school_area] || [];
+  }
 
   const handleItemChange = (index: number, e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     let { name, value } = e.target;
@@ -110,8 +126,38 @@ export default function TextbookOrderPage() {
     setItems(newItems);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const downloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const sheetData = items.map((item, index) => ({
+      "No.": index + 1,
+      "教材名": item.textbook_name,
+      "出版社": item.publisher,
+      "教科": item.subject || "-",
+      "学年": item.target_grades.join("、"),
+      "本体価格": item.unit_price,
+      "生徒用冊数": item.student_quantity,
+      "教員用冊数": item.teacher_quantity,
+      "形態": item.main_item_type,
+      "解答": item.answer_type !== "なし" ? `${item.answer_type} (${item.answer_attached})` : "なし",
+      "付属品": item.accessory_type !== "なし" ? `${item.accessory_type} (${item.accessory_attached})` : "なし",
+      "納品/販売": item.delivery_method,
+      "請求先": item.delivery_method === "納品" ? item.billing_target : "-",
+      "販売日": item.delivery_method === "販売" ? item.requested_date : "-",
+      "備考": item.remarks
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    XLSX.utils.book_append_sheet(wb, ws, "ご注文内容");
+    XLSX.writeFile(wb, `教材ご注文控え_${commonInfo.school_name}_${new Date().toLocaleDateString('ja-JP').replace(/\//g, '')}.xlsx`);
+  };
+
+  const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsConfirming(true);
+    window.scrollTo(0, 0);
+  };
+
+  const handleFinalSubmit = async () => {
     setIsSubmitting(true);
     
     try {
@@ -132,9 +178,9 @@ export default function TextbookOrderPage() {
         .from('textbook_orders')
         .insert([{
           id: orderId,
+          created_at: new Date().toLocaleDateString("sv-SE"), // YYYY-MM-DD 形式
           school_name: commonInfo.school_name,
           teacher_name: commonInfo.teacher_name,
-          email: commonInfo.email,
           school_phone: commonInfo.school_phone,
           personal_phone: commonInfo.personal_phone
         }]);
@@ -169,6 +215,7 @@ export default function TextbookOrderPage() {
 
       if (itemsError) throw itemsError;
 
+      /* 
       // 注文確認メールの送信
       try {
         const itemsListHtml = items.map((item, idx) => `
@@ -213,6 +260,7 @@ export default function TextbookOrderPage() {
       } catch (mailErr) {
         console.error("Failed to send confirmation email:", mailErr);
       }
+      */
 
       alert("ご注文の送信が完了しました！");
       router.push("/");
@@ -224,36 +272,110 @@ export default function TextbookOrderPage() {
     }
   };
 
+  if (isConfirming) {
+    return (
+      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        <h1 className="section-heading" style={{ borderBottom: "2px solid var(--kusano-theme)", width: "100%", paddingBottom: "10px", marginBottom: "30px" }}>
+          ご注文内容の確認
+        </h1>
+        
+        <div style={{ backgroundColor: "var(--surface-light)", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "30px" }}>
+          <h2 style={{ fontSize: "1.2rem", marginBottom: "15px", color: "var(--kusano-theme)" }}>【1】先生（ご注文者様）の情報</h2>
+          <p style={{ marginBottom: "8px" }}><strong>学校名：</strong> {commonInfo.school_name}</p>
+          <p style={{ marginBottom: "8px" }}><strong>ご担当者名：</strong> {commonInfo.teacher_name}</p>
+          <p style={{ marginBottom: "8px" }}><strong>学校電話番号：</strong> {commonInfo.school_phone}</p>
+          <p style={{ marginBottom: "0" }}><strong>携帯電話番号：</strong> {commonInfo.personal_phone || "-"}</p>
+        </div>
+
+        <div style={{ backgroundColor: "var(--surface-light)", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "30px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px", flexWrap: "wrap", gap: "10px" }}>
+            <h2 style={{ fontSize: "1.2rem", margin: 0, color: "var(--kusano-theme)" }}>【2】ご注文の教材一覧</h2>
+            <button type="button" onClick={downloadExcel} style={{ padding: "8px 15px", backgroundColor: "#10b981", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>
+              Excelで控えをダウンロード
+            </button>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px", backgroundColor: "white" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "2px solid #cbd5e1" }}>
+                  <th style={{ padding: "10px", textAlign: "left" }}>教材名</th>
+                  <th style={{ padding: "10px", textAlign: "left" }}>出版社</th>
+                  <th style={{ padding: "10px", textAlign: "left", whiteSpace: "nowrap" }}>学年</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>本体価格</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>生徒用</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>教員用</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ padding: "10px" }}>{item.textbook_name}</td>
+                    <td style={{ padding: "10px" }}>{item.publisher}</td>
+                    <td style={{ padding: "10px", whiteSpace: "nowrap" }}>{item.target_grades.join("、")}</td>
+                    <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{item.unit_price ? `¥${item.unit_price}` : "-"}</td>
+                    <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{item.student_quantity}</td>
+                    <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{item.teacher_quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "20px", justifyContent: "center", marginTop: "40px", flexWrap: "wrap" }}>
+          <button onClick={() => setIsConfirming(false)} style={{ padding: "15px 30px", backgroundColor: "#64748b", color: "white", border: "none", borderRadius: "5px", fontSize: "1.1rem", cursor: "pointer" }}>
+            戻って修正する
+          </button>
+          <button onClick={handleFinalSubmit} disabled={isSubmitting} style={{ padding: "15px 40px", backgroundColor: isSubmitting ? "#ccc" : "#dc3545", color: "white", border: "none", borderRadius: "5px", fontSize: "1.1rem", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 10px rgba(220,53,69,0.3)" }}>
+            {isSubmitting ? "送信中..." : "この内容で注文を確定する"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto" }}>
       <h1 className="section-heading" style={{ borderBottom: "2px solid var(--kusano-theme)", width: "100%", paddingBottom: "10px", marginBottom: "30px" }}>
         補助教材 ご注文フォーム
       </h1>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+      <form onSubmit={handleConfirm} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
         
         {/* --- 共通情報セクション --- */}
         <section style={{ backgroundColor: "var(--surface-light)", padding: "20px", borderRadius: "8px", border: "1px solid #ddd" }}>
           <h2 style={{ fontSize: "1.2rem", marginBottom: "20px", color: "var(--kusano-theme)" }}>【1】先生（ご注文者様）の情報</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             
-            {/* --- 地区と高校名の選択 --- */}
+            {/* --- 学校の選択 --- */}
             <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 200px" }}>
-                <label style={{ fontWeight: "bold" }}>学校の地区 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
-                <select required value={selectedArea} onChange={handleAreaChange}>
-                  <option value="">--地区を選択--</option>
-                  {Object.entries(areaLabels).map(([key, label]) => (
+              <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 150px" }}>
+                <label style={{ fontWeight: "bold" }}>学校種別 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
+                <select required name="school_type" value={commonInfo.school_type} onChange={handleTypeChange}>
+                  <option value="">--選択--</option>
+                  {Object.entries(schoolTypeLabels).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
                 </select>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "2 1 300px" }}>
-                <label style={{ fontWeight: "bold" }}>高校名 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
-                <select required name="school_name" value={commonInfo.school_name} onChange={handleCommonChange} disabled={!selectedArea}>
+              {commonInfo.school_type !== "special" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 150px" }}>
+                  <label style={{ fontWeight: "bold" }}>地区 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
+                  <select required={commonInfo.school_type !== "special"} name="school_area" value={commonInfo.school_area} onChange={handleAreaChange} disabled={!commonInfo.school_type}>
+                    <option value="">--選択--</option>
+                    {Object.entries(areaLabels).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "2 1 250px" }}>
+                <label style={{ fontWeight: "bold" }}>学校名 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
+                <select required name="school_name" value={commonInfo.school_name} onChange={handleCommonChange} disabled={(commonInfo.school_type !== "special" && !commonInfo.school_area) || availableSchools.length === 0}>
                   <option value="">--学校を選択--</option>
-                  {selectedArea && schoolData[selectedArea]?.map(school => (
+                  {availableSchools.map(school => (
                     <option key={school} value={school}>{school}</option>
                   ))}
                 </select>
@@ -265,10 +387,6 @@ export default function TextbookOrderPage() {
               <input required name="teacher_name" value={commonInfo.teacher_name} onChange={handleCommonChange} placeholder="" />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-              <label style={{ fontWeight: "bold" }}>メールアドレス <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
-              <input required type="email" name="email" value={commonInfo.email} onChange={handleCommonChange} placeholder="例: teacher@example.com" />
-            </div>
 
             <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 200px" }}>
@@ -456,11 +574,8 @@ export default function TextbookOrderPage() {
             className="btn-primary" 
             style={{ fontSize: "1.2rem", padding: "15px 40px", backgroundColor: isSubmitting ? "#ccc" : "#dc3545", boxShadow: "0 4px 10px rgba(220,53,69,0.3)" }}
           >
-            {isSubmitting ? "送信中..." : "注文を確定する"}
+            {isSubmitting ? "処理中..." : "注文を確認する"}
           </button>
-          <p style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}>
-            ※注文内容を確認の上、確定ボタンを押してください。
-          </p>
         </section>
 
       </form>

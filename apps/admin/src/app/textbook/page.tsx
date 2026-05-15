@@ -288,7 +288,7 @@ function TextbookAdminContent() {
 }
 
 // 注文入力用モーダルコンポーネント
-function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => void, onSuccess: () => void, initialItem?: any }) {
+export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => void, onSuccess: () => void, initialItem?: any }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedArea, setSelectedArea] = useState("");
   const [commonInfo, setCommonInfo] = useState({
@@ -309,11 +309,11 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
     }
   }, [initialItem]);
 
-  const [items, setItems] = useState(initialItem ? [{
+  const [orderItems, setOrderItems] = useState(initialItem ? [{
     textbook_name: initialItem.textbook_name || "",
     publisher: initialItem.publisher || "",
     subject: initialItem.subject || "",
-    target_grades: initialItem.target_grade ? initialItem.target_grade.split("、") : [],
+    target_grades: initialItem.target_grade ? String(initialItem.target_grade).split("、").map((g: string) => g.trim().includes("年") ? g.trim() : `${g.trim()}年`) : [],
     student_quantity: String(initialItem.student_quantity || ""),
     teacher_quantity: String(initialItem.teacher_quantity || ""),
     main_item_type: initialItem.main_item_type || "冊子",
@@ -367,7 +367,7 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
         
         if (orderError) throw orderError;
 
-        const updatedItem = items[0];
+        const updatedItem = orderItems[0];
         const { error: itemError } = await supabase
           .from('textbook_order_items')
           .update({
@@ -409,7 +409,7 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
           }]);
         if (orderError) throw orderError;
 
-        const orderItems = items.map(item => ({
+        const itemsToSave = orderItems.map((item: any) => ({
           order_id: orderId,
           textbook_name: item.textbook_name,
           publisher: item.publisher,
@@ -429,7 +429,7 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
           unit_price: item.unit_price ? parseInt(item.unit_price, 10) : null
         }));
 
-        const { error: itemsError } = await supabase.from('textbook_order_items').insert(orderItems);
+        const { error: itemsError } = await supabase.from('textbook_order_items').insert(itemsToSave);
         if (itemsError) throw itemsError;
 
         alert("注文を登録しました。");
@@ -444,7 +444,7 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
   };
 
   const addItem = () => {
-    setItems([...items, { ...items[0], textbook_name: "", publisher: "", subject: "", target_grades: [], student_quantity: "", teacher_quantity: "", unit_price: "", remarks: "" }]);
+    setOrderItems([...orderItems, { ...orderItems[0], textbook_name: "", publisher: "", subject: "", target_grades: [], student_quantity: "", teacher_quantity: "", unit_price: "", remarks: "" }]);
   };
 
   return (
@@ -481,7 +481,7 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
               <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "bold", marginBottom: "5px", color: "#000" }}>学校名</label>
               <select required value={commonInfo.school_name} onChange={(e) => setCommonInfo({ ...commonInfo, school_name: e.target.value })} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                 <option value="">学校を選択</option>
-                {selectedArea && schoolData[selectedArea].map(s => <option key={s} value={s}>{s}</option>)}
+                {selectedArea && schoolData[selectedArea].map((s: string) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
@@ -495,47 +495,47 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
           </div>
 
           <h3 style={{ fontSize: "1rem", borderLeft: "4px solid #1e293b", paddingLeft: "10px", marginBottom: "20px", color: "#000" }}>教材内容</h3>
-          {items.map((item, idx) => (
+          {orderItems.map((item, idx) => (
             <div key={idx} style={{ padding: "20px", border: "1px solid #e2e8f0", borderRadius: "10px", marginBottom: "20px", backgroundColor: "#f8fafc" }}>
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: "15px", marginBottom: "15px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>教材名</label>
                   <input required type="text" value={item.textbook_name} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].textbook_name = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>出版社</label>
                   <input required type="text" value={item.publisher} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].publisher = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>教科</label>
                   <input type="text" value={item.subject} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].subject = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} placeholder="例: 数学" style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>本体価格</label>
                   <input type="number" value={item.unit_price} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].unit_price = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>本体</label>
                   <select value={item.main_item_type} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].main_item_type = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                     <option value="冊子">冊子</option>
                     <option value="バラ">バラ</option>
@@ -547,9 +547,9 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>解答</label>
                   <select value={item.answer_type} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].answer_type = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                     <option value="なし">なし</option>
                     <option value="冊子">冊子</option>
@@ -560,9 +560,9 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                   <div>
                     <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>解答の添付</label>
                     <select value={item.answer_attached} onChange={(e) => {
-                      const next = [...items];
+                      const next = [...orderItems];
                       next[idx].answer_attached = e.target.value;
-                      setItems(next);
+                      setOrderItems(next);
                     }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                       <option value="つける">つける</option>
                       <option value="はずす">はずす</option>
@@ -572,9 +572,9 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>付属品</label>
                   <select value={item.accessory_type} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].accessory_type = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                     <option value="なし">なし</option>
                     <option value="冊子">冊子</option>
@@ -585,9 +585,9 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                   <div>
                     <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>付属品添付</label>
                     <select value={item.accessory_attached} onChange={(e) => {
-                      const next = [...items];
+                      const next = [...orderItems];
                       next[idx].accessory_attached = e.target.value;
-                      setItems(next);
+                      setOrderItems(next);
                     }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                       <option value="つける">つける</option>
                       <option value="はずす">はずす</option>
@@ -603,10 +603,10 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                     {["1年", "2年", "3年"].map(g => (
                       <label key={g} style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "2px", color: "#000" }}>
                         <input type="checkbox" checked={item.target_grades.includes(g)} onChange={() => {
-                          const next = [...items];
-                          if (next[idx].target_grades.includes(g)) next[idx].target_grades = next[idx].target_grades.filter(v => v !== g);
+                          const next = [...orderItems];
+                          if (next[idx].target_grades.includes(g)) next[idx].target_grades = next[idx].target_grades.filter((v: string) => v !== g);
                           else next[idx].target_grades = [...next[idx].target_grades, g].sort();
-                          setItems(next);
+                          setOrderItems(next);
                         }} /> {g}
                       </label>
                     ))}
@@ -615,25 +615,25 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>生徒数</label>
                   <input required type="number" value={item.student_quantity} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].student_quantity = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>教員数</label>
                   <input required type="number" value={item.teacher_quantity} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].teacher_quantity = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>形態</label>
                   <select value={item.delivery_method} onChange={(e) => {
-                    const next = [...items];
+                    const next = [...orderItems];
                     next[idx].delivery_method = e.target.value;
-                    setItems(next);
+                    setOrderItems(next);
                   }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                     <option value="納品">納品</option>
                     <option value="販売">販売</option>
@@ -644,9 +644,9 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                     <>
                       <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>請求先</label>
                       <select value={item.billing_target} onChange={(e) => {
-                        const next = [...items];
+                        const next = [...orderItems];
                         next[idx].billing_target = e.target.value;
-                        setItems(next);
+                        setOrderItems(next);
                       }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
                         <option value="学校">学校</option>
                         <option value="個人">個人</option>
@@ -656,9 +656,9 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
                     <>
                       <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>販売希望日</label>
                       <input type="date" value={item.requested_date} onChange={(e) => {
-                        const next = [...items];
+                        const next = [...orderItems];
                         next[idx].requested_date = e.target.value;
-                        setItems(next);
+                        setOrderItems(next);
                       }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "11px", backgroundColor: "white", color: "#000" }} />
                     </>
                   )}
@@ -668,13 +668,13 @@ function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: () => v
               <div>
                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>備考</label>
                 <textarea value={item.remarks} onChange={(e) => {
-                  const next = [...items];
+                  const next = [...orderItems];
                   next[idx].remarks = e.target.value;
-                  setItems(next);
+                  setOrderItems(next);
                 }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "12px", backgroundColor: "white", color: "#000" }} />
               </div>
-              {items.length > 1 && (
-                <button type="button" onClick={() => setItems(items.filter((_, i) => i !== idx))} style={{ color: "red", border: "none", background: "none", fontSize: "12px", marginTop: "10px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}><Trash2 size={14} /> この教材を削除</button>
+              {orderItems.length > 1 && (
+                <button type="button" onClick={() => setOrderItems(orderItems.filter((_, i) => i !== idx))} style={{ color: "red", border: "none", background: "none", fontSize: "12px", marginTop: "10px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}><Trash2 size={14} /> この教材を削除</button>
               )}
             </div>
           ))}
