@@ -71,8 +71,8 @@ export default function SettingsPage() {
 
   const labelMap: Record<string, string> = {
     admin_notification_email: "【重要】注文通知先メールアドレス",
-    textbook: "補助教材：合言葉",
-    schoolbook: "学校図書：合言葉",
+    textbook: "補助教材：認証コード",
+    schoolbook: "学校図書：認証コード",
     shipping: "郵送依頼：共通（学校選択あり）",
     shipping_industrial: "【個別】長崎工業高校：専用コード",
     shipping_north: "【個別】長崎北高校：専用コード",
@@ -89,7 +89,7 @@ export default function SettingsPage() {
       <div style={{ backgroundColor: "white", padding: "30px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "30px", paddingBottom: "15px", borderBottom: "1px solid #f1f5f9" }}>
           <ShieldCheck size={24} color="#059669" />
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", margin: 0, color: "#1e293b" }}>アクセスキー（合言葉）の設定</h2>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", margin: 0, color: "#1e293b" }}>認証コード（アクセスキー）の設定</h2>
         </div>
 
         {loading ? (
@@ -101,7 +101,7 @@ export default function SettingsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 180px 150px", gap: "15px", padding: "0 20px", fontWeight: "bold", fontSize: "0.85rem", color: "#64748b" }}>
               <div>対象フォーム</div>
-              <div style={{ textAlign: "center" }}>合言葉</div>
+              <div style={{ textAlign: "center" }}>認証コード</div>
               <div style={{ textAlign: "center" }}>最終更新</div>
             </div>
 
@@ -188,9 +188,9 @@ export default function SettingsPage() {
       <div style={{ marginTop: "40px", padding: "25px", backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "12px", display: "flex", gap: "15px", alignItems: "flex-start" }}>
         <Key size={24} color="#b45309" style={{ marginTop: "2px" }} />
         <div>
-          <h4 style={{ color: "#92400e", margin: "0 0 8px 0", fontSize: "1rem", fontWeight: "bold" }}>合言葉の管理について</h4>
-          <p style={{ color: "#b45309", fontSize: "0.9rem", margin: 0, lineHeight: "1.6" }}>
-            ここで設定した「合言葉」は、各学校の先生や生徒が注文フォームにアクセスする際に使用します。<br />
+          <h4 style={{ color: "#92400e", margin: "0 0 8px 0", fontSize: "1rem", fontWeight: "bold" }}>認証コードの管理について</h4>
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "#92400e", lineHeight: "1.6" }}>
+            ここで設定した「認証コード」は、各学校の先生や生徒が注文フォームにアクセスする際に使用します。<br />
             学期の変わり目や、セキュリティを高めたい場合に定期的に変更することをお勧めします。
           </p>
         </div>

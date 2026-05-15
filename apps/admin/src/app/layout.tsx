@@ -51,7 +51,7 @@ export default function RootLayout({
               <span style={{ fontWeight: "500" }}>お知らせ管理</span>
             </Link>
 
-            <Link href="/settings" className="header-link" title="合言葉・設定">
+            <Link href="/settings" className="header-link" title="認証コード・設定">
               <Settings size={18} />
               <span style={{ fontWeight: "500" }}>設定管理</span>
             </Link>

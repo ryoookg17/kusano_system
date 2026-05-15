@@ -156,7 +156,7 @@ export default function SchoolMenu() {
               <Lock size={32} color="#d97706" />
             </div>
 
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "10px", color: "#1e293b" }}>合言葉を入力してください</h3>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "10px", color: "#1e293b" }}>認証コードを入力してください</h3>
             <p style={{ fontSize: "0.875rem", color: "#64748b", marginBottom: "25px" }}>
               このフォームは学校関係者様専用です。<br />
               案内されているコードを入力してください。
@@ -178,7 +178,7 @@ export default function SchoolMenu() {
 
             {isError && (
               <p style={{ color: "#ef4444", fontSize: "0.875rem", marginBottom: "15px", fontWeight: "bold" }}>
-                合言葉が正しくありません
+                認証コードが正しくありません
               </p>
             )}
 
