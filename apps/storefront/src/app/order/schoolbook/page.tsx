@@ -540,7 +540,7 @@ export default function SchoolBookOrderPage() {
                   cursor: "pointer"
                 }}
               >
-                高速ISBNモード
+                ISBNモード
               </button>
               <button 
                 type="button"
