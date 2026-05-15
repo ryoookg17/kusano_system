@@ -172,6 +172,7 @@ export default function TextbookOrderPage() {
         .eq('key_type', 'admin_notification_email')
         .single();
       
+      
       const adminEmail = emailKey?.access_code || "kusano-test@example.com";
 
       const { error: orderError } = await supabase
@@ -181,6 +182,7 @@ export default function TextbookOrderPage() {
           created_at: new Date().toLocaleDateString("sv-SE"), // YYYY-MM-DD 形式
           school_name: commonInfo.school_name,
           teacher_name: commonInfo.teacher_name,
+          email: null, // 教師のメアドは不要
           school_phone: commonInfo.school_phone,
           personal_phone: commonInfo.personal_phone
         }]);
@@ -215,8 +217,7 @@ export default function TextbookOrderPage() {
 
       if (itemsError) throw itemsError;
 
-      /* 
-      // 注文確認メールの送信
+      // 注文通知メールの送信（本屋側へ直接送信）
       try {
         const itemsListHtml = items.map((item, idx) => `
           <div style="border-bottom: 1px solid #edf2f7; padding: 10px 0; font-size: 0.95rem;">
@@ -230,37 +231,35 @@ export default function TextbookOrderPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            to: commonInfo.email,
-            subject: `【くさの書店】ご注文を受け付けました（ID: ${orderId.slice(0, 8)}）`,
+            to: adminEmail, // 本屋側の設定アドレスへ直接送る
+            subject: `【HP注文通知】補助教材の注文が入りました（${commonInfo.school_name}）`,
             html: `
               <div style="font-family: sans-serif; line-height: 1.6; color: #2d3748; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 25px;">
-                <h2 style="color: #2c5282; border-bottom: 2px solid #2c5282; padding-bottom: 10px;">教材注文受付のお知らせ</h2>
-                <p>${commonInfo.teacher_name} 先生</p>
-                <p>いつも大変お世話になっております。くさの書店でございます。<br>以下の通り、補助教材のご注文を承りました。</p>
+                <h2 style="color: #2c5282; border-bottom: 2px solid #2c5282; padding-bottom: 10px;">HPからの教材注文通知</h2>
+                <p>HPより以下の注文が入りました。</p>
                 
-                <div style="background: #ebf8ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #bee3f8;">
+                <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
                   <p style="margin: 5px 0;"><strong>学校名:</strong> ${commonInfo.school_name}</p>
+                  <p style="margin: 5px 0;"><strong>担当先生:</strong> ${commonInfo.teacher_name} 先生</p>
+                  <p style="margin: 5px 0;"><strong>学校電話:</strong> ${commonInfo.school_phone}</p>
+                  <p style="margin: 5px 0;"><strong>個人電話:</strong> ${commonInfo.personal_phone || "-"}</p>
                   <p style="margin: 5px 0;"><strong>受付ID:</strong> ${orderId}</p>
                 </div>
 
                 <h3 style="font-size: 1.1rem; border-left: 4px solid #2c5282; padding-left: 10px; margin-top: 30px;">ご注文内容</h3>
                 ${itemsListHtml}
-
-                <p style="margin-top: 30px; font-size: 0.9rem; color: #4a5568;">※本メールは自動送信です。内容に相違がある場合や、キャンセル・変更をご希望の場合はお早めにお電話にてご連絡ください。</p>
                 
-                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-                  <p style="font-weight: bold; margin-bottom: 5px;">くさの書店</p>
-                  <p style="font-size: 0.85rem; margin: 0;">ホームページ: <a href="https://kusano-bookstore.jp">https://kusano-bookstore.jp</a></p>
+                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 0.85rem; color: #718096;">
+                  <p>※このメールはHP注文フォームより自動送信されています。詳細は管理画面を確認してください。</p>
                 </div>
               </div>
             `,
-            text: `${commonInfo.teacher_name} 先生\n\nくさの書店へのご注文ありがとうございます。\n以下の内容で承りました。\n\n学校名: ${commonInfo.school_name}\n受付ID: ${orderId}\n\n【ご注文教材】\n${items.map((it, i) => `${i+1}. ${it.textbook_name} (${it.publisher}) / 生徒${it.student_quantity}冊, 教員${it.teacher_quantity}冊`).join("\n")}\n\n納品まで今しばらくお待ちください。`
+            text: `HPより補助教材の注文が入りました。\n\n学校名: ${commonInfo.school_name}\n担当先生: ${commonInfo.teacher_name} 先生\n電話: ${commonInfo.school_phone}\n\n【ご注文内容】\n${items.map((it, i) => `${i+1}. ${it.textbook_name} (${it.publisher}) / 生徒${it.student_quantity}冊, 教員${it.teacher_quantity}冊`).join("\n")}`
           }),
         });
       } catch (mailErr) {
-        console.error("Failed to send confirmation email:", mailErr);
+        console.error("Failed to send notification email:", mailErr);
       }
-      */
 
       alert("ご注文の送信が完了しました！");
       router.push("/");
