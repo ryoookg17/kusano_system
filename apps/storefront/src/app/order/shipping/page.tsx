@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { shippingTargetSchools } from "@shared/schools";
@@ -8,7 +8,7 @@ import { shippingTargetSchools } from "@shared/schools";
 // 現在対応している学校リスト
 const targetSchools = shippingTargetSchools;
 
-export default function ShippingRequestPage() {
+function ShippingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedSchool, setSelectedSchool] = useState<string>("");
@@ -265,5 +265,13 @@ export default function ShippingRequestPage() {
 
       </form>
     </div>
+  );
+}
+
+export default function ShippingRequestPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: "center", padding: "50px" }}>読み込み中...</div>}>
+      <ShippingContent />
+    </Suspense>
   );
 }
