@@ -611,11 +611,17 @@ export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: 
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>帳合</label>
-                  <input type="text" value={item.accounting_vendor} onChange={(e) => {
+                  <select value={item.accounting_vendor} onChange={(e) => {
                     const next = [...orderItems];
                     next[idx].accounting_vendor = e.target.value;
                     setOrderItems(next);
-                  }} placeholder="例: くさの書店" style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }} />
+                  }} style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1", backgroundColor: "white", color: "#000" }}>
+                    <option value="">選択してください</option>
+                    <option value="きんぶん">きんぶん</option>
+                    <option value="県教">県教</option>
+                    <option value="くさの書店">くさの書店</option>
+                    <option value="その他">その他</option>
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "bold", marginBottom: "4px", color: "#000" }}>本体価格</label>
