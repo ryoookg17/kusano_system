@@ -121,8 +121,14 @@ function TextbookAdminContent() {
   };
 
   const filteredItems = items.filter(item => {
-    // 学校名フィルタ
-    if (filterSchool && !item.order?.school_name?.includes(filterSchool)) return false;
+    // 検索フィルタ (学校名、書名、出版社)
+    if (filterSchool) {
+      const query = filterSchool.toLowerCase();
+      const schoolMatch = item.order?.school_name?.toLowerCase().includes(query);
+      const nameMatch = item.textbook_name?.toLowerCase().includes(query);
+      const publisherMatch = item.publisher?.toLowerCase().includes(query);
+      if (!schoolMatch && !nameMatch && !publisherMatch) return false;
+    }
     
     // 年度フィルタ (注文日時から年を抽出)
     if (filterYear) {
@@ -195,10 +201,10 @@ function TextbookAdminContent() {
 
         <input
           type="text"
-          placeholder="学校名で絞り込み..."
+          placeholder="学校名・書名・出版社で検索..."
           value={filterSchool}
           onChange={(e) => setFilterSchool(e.target.value)}
-          style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "250px", fontSize: "0.9rem", backgroundColor: "white", color: "#000" }}
+          style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "300px", fontSize: "0.9rem", backgroundColor: "white", color: "#000" }}
         />
       </div>
 
