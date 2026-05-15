@@ -307,7 +307,6 @@ export default function SchoolBookOrderPage() {
           school_area: commonInfo.school_area || null,
           school_name: commonInfo.school_name,
           teacher_name: commonInfo.teacher_name,
-          email: null, // 教師のメアドは不要
           school_phone: commonInfo.school_phone,
           personal_phone: commonInfo.personal_phone || null,
           remarks: commonInfo.remarks || null
@@ -333,17 +332,18 @@ export default function SchoolBookOrderPage() {
 
       if (itemsError) throw itemsError;
 
-      // 1. 管理者通知用メールアドレスを取得
-      const { data: emailKey } = await supabase
-        .from('access_keys')
-        .select('access_code')
-        .eq('key_type', 'admin_notification_email')
-        .single();
-      
-      const adminEmail = emailKey?.access_code || "kusano-test@example.com";
-
-      // 注文通知メールの送信（本屋側へ直接送信）
+      // 注文通知メール（メール送信が失敗しても注文は完了とする）
       try {
+        // 管理者メールアドレスを取得（RLSエラーでも続行）
+        let adminEmail = "adakikryo87@gmail.com"; // デフォルト
+        try {
+          const { data: emailKey } = await supabase
+            .from('access_keys')
+            .select('access_code')
+            .eq('key_type', 'admin_notification_email')
+            .maybeSingle();
+          if (emailKey?.access_code) adminEmail = emailKey.access_code;
+        } catch (_) { /* DBから取得できなくてもデフォルトを使用 */ }
         const booksListHtml = items.map((item, idx) => `
           <div style="border-bottom: 1px solid #edf2f7; padding: 10px 0; font-size: 0.95rem;">
             <p style="margin: 0 0 5px 0; font-weight: bold;">${idx + 1}. ${item.book_title}</p>

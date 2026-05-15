@@ -162,40 +162,27 @@ export default function TextbookOrderPage() {
     
     try {
       // 1. 注文共通情報を textbook_orders テーブルに保存
-      // RLS（読み取り制限）に引っかからないよう、Client側でIDを生成して同時に保存します
       const orderId = crypto.randomUUID();
-
-      // 設定から管理者メールアドレスを取得
-      const { data: emailKey } = await supabase
-        .from('access_keys')
-        .select('access_code')
-        .eq('key_type', 'admin_notification_email')
-        .single();
-      
-      
-      const adminEmail = emailKey?.access_code || "kusano-test@example.com";
 
       const { error: orderError } = await supabase
         .from('textbook_orders')
         .insert([{
           id: orderId,
-          created_at: new Date().toLocaleDateString("sv-SE"), // YYYY-MM-DD 形式
+          created_at: new Date().toLocaleDateString("sv-SE"),
           school_name: commonInfo.school_name,
           teacher_name: commonInfo.teacher_name,
-          email: null, // 教師のメアドは不要
           school_phone: commonInfo.school_phone,
           personal_phone: commonInfo.personal_phone
         }]);
         
       if (orderError) throw orderError;
 
-      // 2. 各教材情報を textbook_order_items テーブルに保存するためのデータ整形
+      // 2. 各教材情報を textbook_order_items テーブルに保存
       const orderItems = items.map(item => ({
         order_id: orderId,
         textbook_name: item.textbook_name,
         publisher: item.publisher,
         subject: item.subject,
-        // 配列をカンマ区切りの文字列にして保存
         target_grade: item.target_grades.join("、"),
         student_quantity: parseInt(item.student_quantity || "0", 10),
         teacher_quantity: parseInt(item.teacher_quantity || "0", 10),
@@ -208,7 +195,7 @@ export default function TextbookOrderPage() {
         billing_target: item.delivery_method === "納品" ? item.billing_target : null,
         requested_date: item.delivery_method === "販売" && item.requested_date ? item.requested_date : null,
         remarks: item.remarks,
-        unit_price: item.unit_price ? parseInt(item.unit_price, 10) : null // 追加
+        unit_price: item.unit_price ? parseInt(item.unit_price, 10) : null
       }));
 
       const { error: itemsError } = await supabase
@@ -217,8 +204,19 @@ export default function TextbookOrderPage() {
 
       if (itemsError) throw itemsError;
 
-      // 注文通知メールの送信（本屋側へ直接送信）
+      // 3. 注文通知メール（メール送信が失敗しても注文は完了とする）
       try {
+        // 管理者メールアドレスを取得（RLSエラーでも続行）
+        let adminEmail = "adakikryo87@gmail.com"; // デフォルト
+        try {
+          const { data: emailKey } = await supabase
+            .from('access_keys')
+            .select('access_code')
+            .eq('key_type', 'admin_notification_email')
+            .maybeSingle();
+          if (emailKey?.access_code) adminEmail = emailKey.access_code;
+        } catch (_) { /* DBから取得できなくてもデフォルトを使用 */ }
+
         const itemsListHtml = items.map((item, idx) => `
           <div style="border-bottom: 1px solid #edf2f7; padding: 10px 0; font-size: 0.95rem;">
             <p style="margin: 0 0 5px 0; font-weight: bold;">${idx + 1}. ${item.textbook_name}（${item.publisher}）</p>
@@ -231,13 +229,12 @@ export default function TextbookOrderPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            to: adminEmail, // 本屋側の設定アドレスへ直接送る
+            to: adminEmail,
             subject: `【HP注文通知】補助教材の注文が入りました（${commonInfo.school_name}）`,
             html: `
               <div style="font-family: sans-serif; line-height: 1.6; color: #2d3748; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 25px;">
                 <h2 style="color: #2c5282; border-bottom: 2px solid #2c5282; padding-bottom: 10px;">HPからの教材注文通知</h2>
                 <p>HPより以下の注文が入りました。</p>
-                
                 <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
                   <p style="margin: 5px 0;"><strong>学校名:</strong> ${commonInfo.school_name}</p>
                   <p style="margin: 5px 0;"><strong>担当先生:</strong> ${commonInfo.teacher_name} 先生</p>
@@ -245,10 +242,8 @@ export default function TextbookOrderPage() {
                   <p style="margin: 5px 0;"><strong>個人電話:</strong> ${commonInfo.personal_phone || "-"}</p>
                   <p style="margin: 5px 0;"><strong>受付ID:</strong> ${orderId}</p>
                 </div>
-
                 <h3 style="font-size: 1.1rem; border-left: 4px solid #2c5282; padding-left: 10px; margin-top: 30px;">ご注文内容</h3>
                 ${itemsListHtml}
-                
                 <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 0.85rem; color: #718096;">
                   <p>※このメールはHP注文フォームより自動送信されています。詳細は管理画面を確認してください。</p>
                 </div>

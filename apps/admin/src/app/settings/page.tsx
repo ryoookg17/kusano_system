@@ -55,9 +55,14 @@ export default function SettingsPage() {
 
         const { error } = await supabase
           .from('access_keys')
-          .upsert(payload);
+          .upsert(payload, { onConflict: 'key_type' });
         
-        if (error) throw error;
+        if (error) {
+          if (error.code === '42501') {
+            throw new Error(`権限エラー: '${key.key_type}' の新規作成が許可されていません。データベース側で直接行を作成する必要があります。`);
+          }
+          throw error;
+        }
       }
       alert("すべての設定を更新しました");
       fetchKeys();
