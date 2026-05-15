@@ -98,9 +98,22 @@ function TextbookAdminContent() {
     window.location.href = url;
   };
 
-  const downloadAdoptionExcel = () => {
+  const downloadAdoptionExcel = async () => {
     const selectedItems = items.filter(item => selectedIds.has(item.id));
     if (selectedItems.length === 0) return alert("出力するアイテムを選択してください。");
+    
+    // 出力状態を更新
+    try {
+      const { error } = await supabase
+        .from("textbook_order_items")
+        .update({ is_adoption_output: true })
+        .in("id", selectedItems.map(i => i.id));
+      if (error) throw error;
+      fetchItems();
+    } catch (e) {
+      console.error("Status update error:", e);
+    }
+
     const orderIds = Array.from(new Set(selectedItems.map(item => item.order_id)));
     triggerDownload(`/api/textbook-adoption-excel?ids=${orderIds.join(",")}`);
   };
@@ -224,13 +237,15 @@ function TextbookAdminContent() {
                     checked={filteredItems.length > 0 && selectedIds.size === filteredItems.length}
                   />
                 </th>
-                <th style={{ padding: "12px 15px", width: "120px", whiteSpace: "nowrap", color: "#000" }}>注文日時</th>
+                <th style={{ padding: "12px 15px", width: "100px", whiteSpace: "nowrap", color: "#000" }}>注文日</th>
+                <th style={{ padding: "12px 15px", width: "80px", color: "#000" }}>帳合</th>
                 <th style={{ padding: "12px 15px", minWidth: "250px", color: "#000" }}>教材名 / 出版社</th>
                 <th style={{ padding: "12px 15px", width: "100px", textAlign: "right", whiteSpace: "nowrap", color: "#000" }}>本体価格</th>
                 <th style={{ padding: "12px 15px", width: "100px", textAlign: "center", whiteSpace: "nowrap", color: "#000" }}>冊数(教員)</th>
                 <th style={{ padding: "12px 15px", width: "180px", color: "#000" }}>学校名 / 先生名</th>
-                <th style={{ padding: "12px 15px", width: "100px", textAlign: "center", whiteSpace: "nowrap", color: "#000" }}>採用学年</th>
+                <th style={{ padding: "12px 15px", width: "100px", textAlign: "center", whiteSpace: "nowrap", color: "#000" }}>学年</th>
                 <th style={{ padding: "12px 15px", width: "100px", color: "#000" }}>教科</th>
+                <th style={{ padding: "12px 15px", width: "100px", color: "#000" }}>状態</th>
                 <th style={{ padding: "12px 15px", width: "80px", textAlign: "center", color: "#000" }}>操作</th>
               </tr>
             </thead>
@@ -270,6 +285,9 @@ function TextbookAdminContent() {
                             ? format(new Date(item.created_at), "yyyy/MM/dd")
                             : "-") : ""}
                       </td>
+                      <td style={{ padding: "10px 15px", fontSize: "0.85rem", color: "#000" }}>
+                        {item.billing_target || "-"}
+                      </td>
                       <td style={{ padding: "10px 15px" }}>
                         <div 
                           style={{ fontWeight: "bold", color: "#000", cursor: "pointer", textDecoration: "underline" }}
@@ -290,10 +308,23 @@ function TextbookAdminContent() {
                         <div style={{ fontWeight: "600", fontSize: "0.85rem", color: "#000" }}>{item.order?.school_name}</div>
                         <div style={{ fontSize: "0.75rem", color: "#555" }}>{item.order?.teacher_name}</div>
                       </td>
-                      <td style={{ padding: "10px 15px", textAlign: "center", whiteSpace: "nowrap", color: "#000" }}>{item.target_grade}</td>
+                      <td style={{ padding: "10px 15px", textAlign: "center", whiteSpace: "nowrap", color: "#000" }}>
+                        {item.target_grade ? String(item.target_grade).split(/[、,]/).map(g => g.trim().includes("年") ? g.trim() : `${g.trim()}年`).join("、") : "-"}
+                      </td>
                       <td style={{ padding: "10px 15px", color: "#000" }}>
                         <span style={{ backgroundColor: item.subject ? "#f1f5f9" : "#fee2e2", padding: "2px 6px", borderRadius: "3px", fontSize: "0.75rem", color: item.subject ? "#475569" : "#ef4444", fontWeight: "bold", whiteSpace: "nowrap" }}>
                           {item.subject || "未設定"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 15px", color: "#000" }}>
+                        <span style={{ 
+                          backgroundColor: item.is_adoption_output ? "#ecfdf5" : "#fef2f2", 
+                          padding: "2px 6px", borderRadius: "3px", fontSize: "0.75rem", 
+                          color: item.is_adoption_output ? "#059669" : "#dc2626", 
+                          fontWeight: "bold", whiteSpace: "nowrap",
+                          border: `1px solid ${item.is_adoption_output ? "#10b981" : "#fecaca"}`
+                        }}>
+                          {item.is_adoption_output ? "採用注文書 出力済" : "未出力"}
                         </span>
                       </td>
                       <td style={{ padding: "10px 15px", textAlign: "center" }}>
@@ -359,7 +390,13 @@ export function OrderEntryModal({ onClose, onSuccess, initialItem }: { onClose: 
     textbook_name: initialItem.textbook_name || "",
     publisher: initialItem.publisher || "",
     subject: initialItem.subject || "",
-    target_grades: initialItem.target_grade ? String(initialItem.target_grade).split("、").map((g: string) => g.trim().includes("年") ? g.trim() : `${g.trim()}年`) : [],
+    target_grades: initialItem.target_grade 
+      ? String(initialItem.target_grade).split(/[、,]/).map((g: string) => {
+          const trimmed = g.trim();
+          if (!trimmed) return "";
+          return trimmed.includes("年") ? trimmed : `${trimmed}年`;
+        }).filter(Boolean)
+      : [],
     student_quantity: String(initialItem.student_quantity || ""),
     teacher_quantity: String(initialItem.teacher_quantity || ""),
     main_item_type: initialItem.main_item_type || "冊子",
