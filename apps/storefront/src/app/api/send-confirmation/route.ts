@@ -24,11 +24,18 @@ export async function POST(request: Request) {
       .eq('key_type', 'admin_notification_email')
       .maybeSingle();
 
-    // 1. 宛先(to)が空の場合は管理者宛にする（通知専用モード）
-    // 2. BCCに管理者を設定
-    const adminEmail = emailKey?.access_code || process.env.SMTP_BCC_EMAIL || process.env.SMTP_USER;
-    const finalTo = to || adminEmail;
-    const adminBcc = adminEmail !== finalTo ? adminEmail : undefined;
+    // 宛先とBCCの決定
+    // 1. 宛先(to)が空の場合は管理者(emailKeyまたはSMTP_USER)宛にする（通知専用モード）
+    const fallbackAdmin = emailKey?.access_code || process.env.SMTP_USER;
+    const finalTo = to || fallbackAdmin;
+
+    // 2. BCCには常に環境変数の指定アドレス(Dion等)を含める
+    // 3. 宛先が管理者でない場合は、管理者アドレスもBCCに含める
+    const bccList = [];
+    if (process.env.SMTP_BCC_EMAIL) bccList.push(process.env.SMTP_BCC_EMAIL);
+    if (finalTo !== fallbackAdmin) bccList.push(fallbackAdmin);
+    
+    const adminBcc = bccList.length > 0 ? bccList.join(', ') : undefined;
 
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
