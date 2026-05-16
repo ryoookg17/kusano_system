@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       // テンプレートがない場合のヘッダー作成
       sheet.getRow(1).values = [
         "注文日", "学校名", "担当先生", "学校TEL", "個人TEL", 
-        "帳合", "出版社", "教材名", "生徒用数", "教員用数", 
+        "帳合", "出版社", "教材名", "生徒冊数", "教員冊数", 
         "本体価格", "税込価格", "合計金額", "学年", "教科"
       ];
     }
@@ -78,7 +78,16 @@ export async function GET(request: Request) {
             null,                     // L (12) 税込価格 (公式)
             null,                     // M (13) 合計金額 (公式)
             item.target_grade,        // N (14)
-            item.subject              // O (15)
+            item.subject,             // O (15)
+            item.main_item_type,      // P (16) 本体
+            item.answer_type,         // Q (17) 解答形態
+            item.answer_attached,     // R (18) 解答添付
+            item.accessory_type,      // S (19) 付属品形態
+            item.accessory_attached,  // T (20) 付属品添付
+            item.delivery_method,     // U (21) 納品形態
+            item.billing_target,      // V (22) 請求先
+            item.requested_date,      // W (23) 販売希望日
+            item.remarks              // X (24) 備考
           ];
 
           const row = sheet.getRow(currentRow);

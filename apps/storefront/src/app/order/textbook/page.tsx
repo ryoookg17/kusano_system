@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { allSchoolData as schoolList, schoolTypeLabels, areaLabels } from "@shared/schools";
+import { WHOLESALER_CONFIG, normalizeKatakana } from "@shared/wholesalers";
 import * as XLSX from "xlsx";
 
 export default function TextbookOrderPage() {
@@ -135,8 +136,8 @@ export default function TextbookOrderPage() {
       "教科": item.subject || "-",
       "学年": item.target_grades.join("、"),
       "本体価格": item.unit_price,
-      "生徒用冊数": item.student_quantity,
-      "教員用冊数": item.teacher_quantity,
+      "生徒冊数": item.student_quantity,
+      "教員冊数": item.teacher_quantity,
       "形態": item.main_item_type,
       "解答": item.answer_type !== "なし" ? `${item.answer_type} (${item.answer_attached})` : "なし",
       "付属品": item.accessory_type !== "なし" ? `${item.accessory_type} (${item.accessory_attached})` : "なし",
@@ -178,25 +179,43 @@ export default function TextbookOrderPage() {
       if (orderError) throw orderError;
 
       // 2. 各教材情報を textbook_order_items テーブルに保存
-      const orderItems = items.map(item => ({
-        order_id: orderId,
-        textbook_name: item.textbook_name,
-        publisher: item.publisher,
-        subject: item.subject,
-        target_grade: item.target_grades.join("、"),
-        student_quantity: parseInt(item.student_quantity || "0", 10),
-        teacher_quantity: parseInt(item.teacher_quantity || "0", 10),
-        main_item_type: item.main_item_type,
-        answer_type: item.answer_type,
-        answer_attached: item.answer_type !== "なし" ? item.answer_attached : null,
-        accessory_type: item.accessory_type,
-        accessory_attached: item.accessory_type !== "なし" ? item.accessory_attached : null,
-        delivery_method: item.delivery_method,
-        billing_target: item.delivery_method === "納品" ? item.billing_target : null,
-        requested_date: item.delivery_method === "販売" && item.requested_date ? item.requested_date : null,
-        remarks: item.remarks,
-        unit_price: item.unit_price ? parseInt(item.unit_price, 10) : null
-      }));
+      const orderItems = items.map(item => {
+        // 出版社から帳合を自動判定 (ハードコードされたマスタを使用)
+        const pub = normalizeKatakana(item.publisher);
+        const name = normalizeKatakana(item.textbook_name);
+        const config = WHOLESALER_CONFIG.find(c => 
+          normalizeKatakana(c.publisher) === pub && 
+          (!c.school || c.school === commonInfo.school_name) &&
+          (!c.keyword || name.includes(normalizeKatakana(c.keyword)))
+        );
+        let vendor = config ? config.vendor : "";
+        
+        // 「直接」の場合は出版社名をセット
+        if (vendor === "直接") {
+          vendor = item.publisher;
+        }
+
+        return {
+          order_id: orderId,
+          textbook_name: item.textbook_name,
+          publisher: item.publisher,
+          subject: item.subject,
+          target_grade: item.target_grades.join("、"),
+          student_quantity: parseInt(item.student_quantity || "0", 10),
+          teacher_quantity: parseInt(item.teacher_quantity || "0", 10),
+          main_item_type: item.main_item_type,
+          answer_type: item.answer_type,
+          answer_attached: item.answer_type !== "なし" ? item.answer_attached : null,
+          accessory_type: item.accessory_type,
+          accessory_attached: item.accessory_type !== "なし" ? item.accessory_attached : null,
+          delivery_method: item.delivery_method,
+          billing_target: item.delivery_method === "納品" ? item.billing_target : null,
+          requested_date: item.delivery_method === "販売" && item.requested_date ? item.requested_date : null,
+          remarks: item.remarks,
+          unit_price: item.unit_price ? parseInt(item.unit_price, 10) : null,
+          accounting_vendor: vendor
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('textbook_order_items')
@@ -204,9 +223,8 @@ export default function TextbookOrderPage() {
 
       if (itemsError) throw itemsError;
 
-      // 3. 注文通知メール（メール送信が失敗しても注文は完了とする）
+      // 3. 注文通知メール
       try {
-        // 管理者メールアドレスを取得（RLSエラーでも続行）
         let adminEmail = "adakikryo87@gmail.com"; // デフォルト
         try {
           const { data: emailKey } = await supabase
@@ -215,7 +233,7 @@ export default function TextbookOrderPage() {
             .eq('key_type', 'admin_notification_email')
             .maybeSingle();
           if (emailKey?.access_code) adminEmail = emailKey.access_code;
-        } catch (_) { /* DBから取得できなくてもデフォルトを使用 */ }
+        } catch (_) { }
 
         const itemsListHtml = items.map((item, idx) => `
           <div style="border-bottom: 1px solid #edf2f7; padding: 10px 0; font-size: 0.95rem;">
@@ -260,7 +278,7 @@ export default function TextbookOrderPage() {
       router.push("/");
     } catch (error) {
       console.error(error);
-      alert("通信エラーが発生しました。データベースが正しく構築されているか確認してください。");
+      alert("通信エラーが発生しました。");
     } finally {
       setIsSubmitting(false);
     }
@@ -296,8 +314,8 @@ export default function TextbookOrderPage() {
                   <th style={{ padding: "10px", textAlign: "left" }}>出版社</th>
                   <th style={{ padding: "10px", textAlign: "left", whiteSpace: "nowrap" }}>学年</th>
                   <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>本体価格</th>
-                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>生徒用</th>
-                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>教員用</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>生徒冊数</th>
+                  <th style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>教員冊数</th>
                 </tr>
               </thead>
               <tbody>
@@ -341,7 +359,6 @@ export default function TextbookOrderPage() {
           <h2 style={{ fontSize: "1.2rem", marginBottom: "20px", color: "var(--kusano-theme)" }}>【1】先生（ご注文者様）の情報</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             
-            {/* --- 学校の選択 --- */}
             <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 150px" }}>
                 <label style={{ fontWeight: "bold" }}>学校種別 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
@@ -381,15 +398,14 @@ export default function TextbookOrderPage() {
               <input required name="teacher_name" value={commonInfo.teacher_name} onChange={handleCommonChange} placeholder="" />
             </div>
 
-
             <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 200px" }}>
                 <label style={{ fontWeight: "bold" }}>学校の電話番号 <span style={{ color: "red", fontSize: "12px" }}>*</span></label>
-                <input required name="school_phone" value={commonInfo.school_phone} onChange={handleCommonChange} placeholder="例: 095xxxxxxx" />
+                <input required name="school_phone" value={commonInfo.school_phone} onChange={handleCommonChange} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: "1 1 200px" }}>
                 <label style={{ fontWeight: "bold" }}>個人の電話番号</label>
-                <input name="personal_phone" value={commonInfo.personal_phone} onChange={handleCommonChange} placeholder="例: 090xxxxxxxx" />
+                <input name="personal_phone" value={commonInfo.personal_phone} onChange={handleCommonChange} />
               </div>
             </div>
 
@@ -417,15 +433,15 @@ export default function TextbookOrderPage() {
                 <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
                   <div style={{ flex: "2 1 300px", display: "flex", flexDirection: "column", gap: "5px" }}>
                     <label style={{ fontWeight: "bold", fontSize: "14px" }}>教材名 <span style={{ color: "red" }}>*</span></label>
-                    <input required name="textbook_name" value={item.textbook_name} onChange={(e) => handleItemChange(index, e)} placeholder="（例）基礎からの数学I+A" />
+                    <input required name="textbook_name" value={item.textbook_name} onChange={(e) => handleItemChange(index, e)} />
                   </div>
                   <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", gap: "5px" }}>
                     <label style={{ fontWeight: "bold", fontSize: "14px" }}>教科</label>
-                    <input name="subject" value={item.subject} onChange={(e) => handleItemChange(index, e)} placeholder="（例）数学" />
+                    <input name="subject" value={item.subject} onChange={(e) => handleItemChange(index, e)} />
                   </div>
                   <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", gap: "5px" }}>
                     <label style={{ fontWeight: "bold", fontSize: "14px" }}>出版社 <span style={{ color: "red" }}>*</span></label>
-                    <input required name="publisher" value={item.publisher} onChange={(e) => handleItemChange(index, e)} placeholder="（例）数研出版" />
+                    <input required name="publisher" value={item.publisher} onChange={(e) => handleItemChange(index, e)} />
                   </div>
                 </div>
 
@@ -448,15 +464,15 @@ export default function TextbookOrderPage() {
                   
                   <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column", gap: "5px" }}>
                     <label style={{ fontWeight: "bold", fontSize: "14px" }}>本体価格</label>
-                    <input type="text" inputMode="numeric" min="0" name="unit_price" value={item.unit_price} onChange={(e) => handleItemChange(index, e)} placeholder="1500" />
+                    <input type="text" inputMode="numeric" min="0" name="unit_price" value={item.unit_price} onChange={(e) => handleItemChange(index, e)} />
                   </div>
                   <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column", gap: "5px" }}>
-                    <label style={{ fontWeight: "bold", fontSize: "14px" }}>冊数（生徒用） <span style={{ color: "red" }}>*</span></label>
-                    <input required type="text" inputMode="numeric" min="0" name="student_quantity" value={item.student_quantity} onChange={(e) => handleItemChange(index, e)} placeholder="150" />
+                    <label style={{ fontWeight: "bold", fontSize: "14px" }}>生徒冊数 <span style={{ color: "red" }}>*</span></label>
+                    <input required type="text" inputMode="numeric" min="0" name="student_quantity" value={item.student_quantity} onChange={(e) => handleItemChange(index, e)} />
                   </div>
                   <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column", gap: "5px" }}>
-                    <label style={{ fontWeight: "bold", fontSize: "14px" }}>冊数（教員用） <span style={{ color: "red" }}>*</span></label>
-                    <input required type="text" inputMode="numeric" min="0" name="teacher_quantity" value={item.teacher_quantity} onChange={(e) => handleItemChange(index, e)} placeholder="5" />
+                    <label style={{ fontWeight: "bold", fontSize: "14px" }}>教員冊数 <span style={{ color: "red" }}>*</span></label>
+                    <input required type="text" inputMode="numeric" min="0" name="teacher_quantity" value={item.teacher_quantity} onChange={(e) => handleItemChange(index, e)} />
                   </div>
                 </div>
 
@@ -538,7 +554,7 @@ export default function TextbookOrderPage() {
                   
                   <div style={{ flex: "2 1 300px", display: "flex", flexDirection: "column", gap: "5px" }}>
                     <label style={{ fontWeight: "bold", fontSize: "14px" }}>備考（教員からの要望など）</label>
-                    <textarea name="remarks" value={item.remarks} onChange={(e) => handleItemChange(index, e)} rows={2} placeholder="特別なご要望があればご記入ください" />
+                    <textarea name="remarks" value={item.remarks} onChange={(e) => handleItemChange(index, e)} rows={2} />
                   </div>
                 </div>
 

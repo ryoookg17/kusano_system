@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { ChevronRight, BookOpen, AlertCircle } from "lucide-react";
+import SectionGuard from "@/components/SectionGuard";
+
 
 import { getSchoolCategory, AREA_MAP, TYPE_MAP } from "@/lib/schoolList";
 
@@ -42,6 +44,15 @@ const ModuleStatus = ({ label, pending, total }: { label: string, pending: numbe
 };
 
 export default function SchoolSummaryPage() {
+  return (
+    <SectionGuard sectionId="summary" sectionName="学校別管理">
+      <SchoolSummaryContent />
+    </SectionGuard>
+  );
+}
+
+function SchoolSummaryContent() {
+
   const [summaries, setSummaries] = useState<SchoolSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);

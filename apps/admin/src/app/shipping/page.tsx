@@ -2,6 +2,8 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import SectionGuard from "@/components/SectionGuard";
+
 import { supabase } from "@/lib/supabaseClient";
 import { format } from "date-fns";
 import { Download, CheckCircle, Trash2 } from "lucide-react";
@@ -61,7 +63,7 @@ function ShippingAdminContent() {
       setRequests(requests.map(req => req.id === id ? { ...req, status: newStatus } : req));
     } catch (error) {
       console.error(error);
-      alert("ステータス更新に失敗しました");
+      alert("状態更新に失敗しました");
     }
   };
 
@@ -151,7 +153,7 @@ function ShippingAdminContent() {
       <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
         <div style={{ marginBottom: "20px", display: "flex", gap: "25px", alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <label style={{ fontWeight: "bold", color: "#000" }}>ステータスで絞り込み：</label>
+            <label style={{ fontWeight: "bold", color: "#000" }}>状態で絞り込み：</label>
             <select 
               value={filterStatus} 
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -239,8 +241,11 @@ function ShippingAdminContent() {
 
 export default function ShippingAdminPage() {
   return (
-    <Suspense fallback={<div>読み込み中...</div>}>
-      <ShippingAdminContent />
-    </Suspense>
+    <SectionGuard sectionId="shipping" sectionName="郵送管理">
+      <Suspense fallback={<div>読み込み中...</div>}>
+        <ShippingAdminContent />
+      </Suspense>
+    </SectionGuard>
   );
 }
+

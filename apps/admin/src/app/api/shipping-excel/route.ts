@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const sheet = workbook.addWorksheet("郵送依頼");
 
     // ヘッダー行
-    const headers = ["依頼日時", "学校名", "学年", "学科・コース", "氏名", "メールアドレス", "電話番号", "郵便番号", "住所", "備考", "ステータス"];
+    const headers = ["依頼日時", "学校名", "学年", "学科・コース", "氏名", "メールアドレス", "電話番号", "郵便番号", "住所", "備考", "状態"];
 
     const headerRow = sheet.addRow(headers);
     headerRow.eachCell((cell) => {

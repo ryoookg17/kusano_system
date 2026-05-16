@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import SectionGuard from "@/components/SectionGuard";
+
 import { supabase } from "@/lib/supabaseClient";
 import { Download, ChevronDown, ChevronUp, CheckCircle, Trash2 } from "lucide-react";
 import { saveAs } from "file-saver";
@@ -66,7 +68,7 @@ function SchoolbookAdminContent() {
       setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
     } catch (error) {
       console.error(error);
-      alert("ステータス更新に失敗しました");
+      alert("状態更新に失敗しました");
     }
   };
 
@@ -177,7 +179,7 @@ function SchoolbookAdminContent() {
           </div>
 
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <label style={{ fontWeight: "bold", color: "#000" }}>ステータス：</label>
+            <label style={{ fontWeight: "bold", color: "#000" }}>状態：</label>
             <select 
               value={filterStatus}
               onChange={(e) => {
@@ -320,8 +322,11 @@ function SchoolbookAdminContent() {
 
 export default function SchoolbookAdminPage() {
   return (
-    <Suspense fallback={<div>読み込み中...</div>}>
-      <SchoolbookAdminContent />
-    </Suspense>
+    <SectionGuard sectionId="schoolbook" sectionName="学校図書管理">
+      <Suspense fallback={<div>読み込み中...</div>}>
+        <SchoolbookAdminContent />
+      </Suspense>
+    </SectionGuard>
   );
 }
+
