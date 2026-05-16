@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import path from "path";
-import { createClient } from "@supabase/supabase-js";
-
-// Supabase初期化
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from "@/lib/supabaseClient";
 
 export async function GET(request: Request) {
   try {

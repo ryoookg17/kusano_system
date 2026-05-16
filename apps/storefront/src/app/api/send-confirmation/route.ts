@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function POST(request: Request) {
   try {
@@ -17,10 +17,6 @@ export async function POST(request: Request) {
     }
 
     // データベースから管理者通知用メールアドレスを取得（存在しなくてもエラーにしない）
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
     
     const { data: emailKey } = await supabase
       .from('access_keys')
