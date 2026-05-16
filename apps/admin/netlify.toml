@@ -1,6 +1,8 @@
 [build]
-  command = "npm run build"
-  publish = ".next"
+  # どの階層から実行されても admin をビルドするように明示
+  command = "npm run build -w admin"
+  # モノレポ構成では、ルートからの相対パスを指定するのが最も安全です
+  publish = "apps/admin/.next"
   ignore = "git diff --quiet HEAD^ HEAD . ../../packages/shared"
 
 [build.environment]
