@@ -230,9 +230,9 @@ function TextbookAdminContent() {
           onChange={(e) => setFilterYear(e.target.value)}
           style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", backgroundColor: "white", color: "#000" }}
         >
-          <option value="">すべての年度</option>
-          {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(year => (
-            <option key={year} value={year.toString()}>{year}年度</option>
+          <option value="">すべての年</option>
+          {Array.from({ length: currentYear - 2020 + 1 }, (_, i) => 2020 + i).reverse().map(year => (
+            <option key={year} value={year.toString()}>{year}年</option>
           ))}
         </select>
 
@@ -248,7 +248,7 @@ function TextbookAdminContent() {
 
         <input
           type="text"
-          placeholder="学校名・書名・出版社で検索..."
+          placeholder="学校名・教材名・出版社で検索..."
           value={filterSchool}
           onChange={(e) => setFilterSchool(e.target.value)}
           style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "300px", fontSize: "0.9rem", backgroundColor: "white", color: "#000" }}
